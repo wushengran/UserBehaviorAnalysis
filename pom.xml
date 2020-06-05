@@ -11,6 +11,7 @@
     <modules>
         <module>HotItemAnalysis</module>
         <module>NetworkFlowAnalysis</module>
+        <module>MarketAnalysis</module>
     </modules>
     <properties>
         <flink.version>1.10.0</flink.version>

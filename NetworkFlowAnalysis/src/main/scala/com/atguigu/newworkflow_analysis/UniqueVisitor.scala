@@ -1,11 +1,14 @@
 package com.atguigu.newworkflow_analysis
 
+import org.apache.flink.api.common.functions.AggregateFunction
 import org.apache.flink.streaming.api.TimeCharacteristic
 import org.apache.flink.streaming.api.scala._
 import org.apache.flink.streaming.api.scala.function.AllWindowFunction
 import org.apache.flink.streaming.api.windowing.time.Time
 import org.apache.flink.streaming.api.windowing.windows.TimeWindow
 import org.apache.flink.util.Collector
+
+import scala.util.Random
 
 /**
   * Copyright (c) 2018-2028 尚硅谷 All Rights Reserved 
@@ -37,6 +40,10 @@ object UniqueVisitor {
     val uvCountStream: DataStream[UvCount] = dataStream
       .filter(_.behavior == "pv")
       .timeWindowAll( Time.hours(1) )    // 统计每小时的uv值
+//        .map( data => (Random.nextString(10), data.userId) )
+//        .keyBy(_._1)
+//        .timeWindow( Time.hours(1) )
+//        .aggregate( new UvCountAgg(), new UvCountResult() )
       .apply( new UvCountResult() )
 
     uvCountStream.print()
@@ -57,4 +64,15 @@ class UvCountResult() extends AllWindowFunction[UserBehavior, UvCount, TimeWindo
     // 包装好样例类类型输出
     out.collect( UvCount(window.getEnd, idSet.size) )
   }
+}
+
+// 自定义增量聚合函数
+class UvCountAgg() extends AggregateFunction[(String, Long), Long, Long]{
+  override def add(value: (String, Long), accumulator: Long): Long = ???
+
+  override def createAccumulator(): Long = ???
+
+  override def getResult(accumulator: Long): Long = ???
+
+  override def merge(a: Long, b: Long): Long = ???
 }
