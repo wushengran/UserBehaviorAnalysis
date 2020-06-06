@@ -36,7 +36,7 @@ object LoginFailWithCep {
         val dataArray = data.split(",")
         LoginEvent(dataArray(0).toLong, dataArray(1), dataArray(2), dataArray(3).toLong)
       } )
-      .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor[LoginEvent](Time.seconds(0)) {
+      .assignTimestampsAndWatermarks(new BoundedOutOfOrdernessTimestampExtractor[LoginEvent](Time.seconds(3)) {
         override def extractTimestamp(element: LoginEvent): Long = element.timestamp * 1000L
       })
 
@@ -46,13 +46,17 @@ object LoginFailWithCep {
       .next("secondFail").where(_.eventType == "fail")    // 紧跟着第二次登录失败事件
       .within(Time.seconds(2))    // 在2秒之内连续发生有效
 
+    // 循环模式定义示例
+    val loginFailPattern2 = Pattern
+      .begin[LoginEvent]("fails").times(2).where(_.eventType == "fail").consecutive()
+      .within(Time.seconds(10))
+
     // 3. 将pattern应用到dataStream上，得到一个PatternStream
-    val patternStream: PatternStream[LoginEvent] = CEP.pattern(loginEventStream.keyBy(_.userId), loginFailPattern)
-      .sideOutputLateData(new OutputTag[LoginEvent]("late"))
+    val patternStream: PatternStream[LoginEvent] = CEP.pattern(loginEventStream.keyBy(_.userId), loginFailPattern2)
 
     // 4. 检出符合规则匹配的复杂事件，转换成输出结果
     val loginFailWarningStream: DataStream[LoginFailWarning] = patternStream
-      .select( new LoginFailDetect() )
+      .select( new LoginFailDetect2() )
 
     // 5. 打印输出报警信息
     loginFailWarningStream.print("warning")
@@ -65,7 +69,14 @@ object LoginFailWithCep {
 class LoginFailDetect() extends PatternSelectFunction[LoginEvent, LoginFailWarning]{
   override def select(pattern: util.Map[String, util.List[LoginEvent]]): LoginFailWarning = {
     val firstFailEvent: LoginEvent = pattern.get("firstFail").iterator().next()
-    val sencondFailEvent: LoginEvent = pattern.get("secondFail").iterator().next()
-    LoginFailWarning( firstFailEvent.userId, firstFailEvent.timestamp, sencondFailEvent.timestamp, "login fail" )
+    val secondFailEvent: LoginEvent = pattern.get("secondFail").iterator().next()
+    LoginFailWarning( firstFailEvent.userId, firstFailEvent.timestamp, secondFailEvent.timestamp, "login fail" )
   }
 }
+
+class LoginFailDetect2() extends PatternSelectFunction[LoginEvent, LoginFailWarning]{
+  override def select(pattern: util.Map[String, util.List[LoginEvent]]): LoginFailWarning = {
+    val firstFailEvent = pattern.get("fails").get(0)
+    val secondFailEvent = pattern.get("fails").get(1)
+    LoginFailWarning( firstFailEvent.userId, firstFailEvent.timestamp, secondFailEvent.timestamp, "login fail" )
+  }}

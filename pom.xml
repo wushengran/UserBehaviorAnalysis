@@ -13,6 +13,7 @@
         <module>NetworkFlowAnalysis</module>
         <module>MarketAnalysis</module>
         <module>LoginFailDetect</module>
+        <module>OrderPayDetect</module>
     </modules>
     <properties>
         <flink.version>1.10.0</flink.version>
