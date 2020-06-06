@@ -1,0 +1,32 @@
+1. 做count统计整体思路
+map成样例类->filter出对应数据->按照某个字段分组->开窗聚合
+
+2. 关于窗口的聚合操作
+（1）增量聚合
+一般情况下，可以用增量聚合的方式：
+sum/max/min，reduce/aggregate
+最简单的调用方式，里面传一个函数类参数：reduce(ReduceFunction), aggregate(AggregateFunction)
+ReduceFunction/AggregateFunction：叫做增量聚合函数，每来一个数据就做一次聚合操作，
+窗口本身并不保存当前的所有数据，只保存一个当前的中间聚合状态
+等到窗口结束时间，需要输出结果时，将中间聚合状态做转换输出（AggregateFunction里的getResult）
+（2）全窗口操作
+与之对应的另一种方式，就是全窗口操作，每条数据来的时候不做计算处理，直接保存成窗口的状态
+等到窗口结束时间，需要计算输出结果的时候，统计调用全窗口函数进行计算输出
+apply/process
+只传一个参数：apply(WindowFunction), process(ProcessWindowFunction)
+这种方式类似于批处理，能够拿到window相关的信息
+
+3. 一般统计的考虑：既要增量聚合，又要拿到window信息
+实现方法是把增量聚合函数和全窗口函数结合起来用，传两个参数：
+aggregate(AggregateFunction, WindowFunction)
+
+4. 什么时候用process function？
+process function使用方式最灵活，理论上所有的需求都可以用process function实现
+如果用到了侧输出流、定时器，或者需要获取当前的时间信息，这些都只能在process function中拿到，就只能用process fucntion实现了
+
+5. 对于process function的调用，需要注意两点：
+一个是onTimer，定时器触发，只有一个onTimer方法，但是可以定义多个不同的定时器；所以一般需要在onTimer里判断时间戳，做对应定时器的处理
+另一个是如果定义了状态，需要注意状态的更新和清空
+
+6. 关于onTimer
+onTimer: 定时器触发，其实就是一个事件驱动的操作，这个事件就是时间的推移，就是watermark的到来
