@@ -19,7 +19,7 @@
     <properties>
         <flink.version>1.10.1</flink.version>
         <scala.binary.version>2.12</scala.binary.version>
-        <kafka.version>2.2.0</kafka.version>
+        <kafka.version>2.6.3</kafka.version>
     </properties>
     <dependencies>
         <dependency>
